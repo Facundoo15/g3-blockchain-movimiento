@@ -1,0 +1,41 @@
+version: "3.8"
+services:
+  ganache-server:
+    container_name: ganache-server
+    build:
+      context: ./ganache-server
+    environment:
+      - HOST=${HOST}
+      - PORT=${PORT}
+      - MNEMONIC=${MNEMONIC}
+      - GAS_LIMIT=${GAS_LIMIT}
+      - NETWORK_ID=${NETWORK_ID}
+    ports:
+      - "8545:8545"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'curl -sf -X POST --data ''{"jsonrpc":"2.0","method":"net_version","params":[],"id":1}'' localhost:${PORT} || exit 1',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  truffle-farmachain:
+    container_name: truffle-farmachain
+    build:
+      context: ./truffle-farmachain
+    depends_on:
+      ganache-server:
+        condition: service_healthy
+    healthcheck:
+      test: curl -sf -X POST --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' ganache-server:8545
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    command: >
+      sh -c "truffle compile &&
+             truffle migrate"
+    tty: true
+
